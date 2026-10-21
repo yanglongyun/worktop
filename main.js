@@ -68,6 +68,8 @@ if (iimos) {
       minHeight: 600,
       title: "worktop",
       background: "#ffffff",
+      // 用系统原生标题栏:红绿灯和窗口钮归系统,界面不用给它们让位
+      titleBar: "native",
     },
   });
 } else {
