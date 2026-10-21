@@ -5,19 +5,17 @@ import { widgetsApi } from "./api/widgets";
 import { chatStartTab } from "./components/workspace/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSocket } from "./ws";
-import { tabForWcId, useBrowserHost, wcIdForTab } from "./lib/webviewHost";
 import { EVENTS } from "../../server/shared/events";
 import { QuickOpen, CommandPalette, type Command } from "./components/command";
 import { PanelHost } from "./components/sidebar";
 import { WorkspaceLayout, isAppTab, isSettingsTab, isContentTab, useTabGroups, appTab, terminalTab, webTab, type TabActions, type WorkspaceGroupId } from "./components/workspace";
 import { type WorkspaceTab } from "./components/workspace/types";
 import { toNavigableUrl } from "./lib/search";
-import { BrowsingPrompts, DialogHost, dialog, showToast, SystemNotices, ToastHost } from "./components/ui";
+import { DialogHost, dialog, showToast, ToastHost } from "./components/ui";
 import { FileText, Folder, FolderPlus, Bot, Globe, LayoutGrid, Search, Settings as SettingsIcon, X, PanelRight } from "./components/ui/icons";
 
 export function App() {
   const socket = useSocket();
-  useBrowserHost(socket); // browser 工具的执行端:应答 server 广播的网页标签指令(仅 Electron)
   const [treeRefresh, setTreeRefresh] = useState(0);
   const treeBumpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [gitRefreshKey, setGitRefreshKey] = useState(0);
@@ -207,54 +205,6 @@ export function App() {
     return off;
   }, [refreshGit, socket, tabGroups.removeNodeTab, tabGroups.updateFileTab]);
 
-  // browser open:AI 要开一个网页标签 —— **后台打开**,在当前分组里正常开一个标签但不抢前台:
-  // 用户可能正在别的对话里干活,AI 开页不该把人的焦点夺走。带 token 打开,webview 注册时兑现给 server;
-  // 同站已开则复用现有标签(同样不聚焦),并用它的 wcId 带 token 重注册,工具调用同样兑现
-  useEffect(() => {
-    const off = socket.on("web_tab_open", (p: any) => {
-      if (!p?.url) return;
-      const token = p.token ? String(p.token) : undefined;
-      // AI 开页:放到另一半区并激活(没分屏就分屏),但焦点留在用户这边 —— 正在聊天不被打断,又能看到新开的页。
-      const existing = tabGroups.openWeb(String(p.url), undefined, { token, side: true, keepFocus: true });
-      if (existing && token) {
-        const wcId = wcIdForTab(existing.id);
-        if (wcId != null) {
-          socket.send({ type: "web_tab_register", wcId, tabId: existing.id, url: existing.url, title: existing.title, token });
-        }
-      }
-    });
-    return off;
-  }, [socket, tabGroups.openWeb]);
-
-  // 壳里的新标签请求:webview 里 target=_blank / 中键 / 右键「在新标签页打开」,
-  // 以及宿主界面被外链导航时的兜底 —— 都落到这里开一个网页标签
-  useEffect(() => {
-    const onOpenTab = (e: Event) => {
-      const detail = (e as CustomEvent).detail || {};
-      const url = String(detail.url || "");
-      if (!url) return;
-      // 壳只认得 webContents,这里翻成标签 id —— 新标签要插在来源标签之后
-      const openerId = typeof detail.openerWcId === "number" ? tabForWcId(detail.openerWcId) : null;
-      tabGroups.openWeb(url, undefined, {
-        openerId: openerId || undefined,
-        background: !!detail.background,
-        fresh: true,
-      });
-    };
-    window.addEventListener("worktop:open-web-tab", onOpenTab);
-    return () => window.removeEventListener("worktop:open-web-tab", onOpenTab);
-  }, [tabGroups.openWeb]);
-
-  // browser screenshot:截图前把目标网页标签翻到前台(隐藏的 <webview> 画不出图,capturePage 会挂起)
-  useEffect(() => {
-    const onActivate = (e: Event) => {
-      const tabId = String((e as CustomEvent).detail?.tabId || "");
-      if (tabId) tabGroups.activateTabById(tabId);
-    };
-    window.addEventListener("worktop:web-activate", onActivate);
-    return () => window.removeEventListener("worktop:web-activate", onActivate);
-  }, [tabGroups.activateTabById]);
-
   // 全局快捷键:⌘P 快开 / ⌘⇧P 命令面板
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -268,7 +218,7 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // 标签页快捷键:⌘W 关标签(Electron 由菜单转发 worktop:close-tab)、
+  // 标签页快捷键:⌘W 关标签(worktop:close-tab 事件也能触发)、
   // Ctrl(+Shift)+Tab / ⌘⇧[ ] 在当前分组内循环切换
   useEffect(() => {
     const cycleTab = (dir: number) => {
@@ -496,8 +446,6 @@ export function App() {
       {quickOpen && <QuickOpen onPick={(n) => openNode(n)} onClose={() => setQuickOpen(false)} />}
       {cmdOpen && <CommandPalette commands={commands} onClose={() => setCmdOpen(false)} />}
       <DialogHost />{/* 全局对话框:提示/确认/输入,全产品一套 */}
-      <BrowsingPrompts />{/* 网页的权限 / HTTP 认证 / 证书问询 —— session 级,挂一份 */}
-      <SystemNotices />{/* 右下角系统气泡:更新就绪 + 官方公告 */}
       <ToastHost />{/* 轻提示(应用 ui.toast 也走这里) */}
 
       {/* 移动端遮罩 */}

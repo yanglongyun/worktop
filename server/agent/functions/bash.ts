@@ -5,6 +5,7 @@
 //     读日志用 read/tail 日志文件,停止用 bash kill。dev server 一类命令即使忘了
 //     background 也会被自动识别转后台,别让模型卡死自己。
 import { spawn } from "child_process";
+import { delimiter } from "path";
 import { executionDirectory } from "../paths.js";
 import { existsSync } from "fs";
 import { getProcess, looksLongRunning, startProcess } from "../../terminals/jobs.js";
@@ -24,6 +25,10 @@ const shellInvocation = (cmd: string): [string, string[]] =>
     : [resolveShell(), ["-lc", cmd]];
 
 const TIMEOUT_MS = Math.max(5000, Number(process.env.WORKTOP_SHELL_TIMEOUT_MS) || 120_000);
+// launcher 的 node / iimos 命令在 IIMOS_BIN,放进 PATH 让命令里直接能用(用户机器上多半没装 Node)
+const shellEnv = () => (process.env.IIMOS_BIN
+  ? { ...process.env, PATH: `${process.env.IIMOS_BIN}${delimiter}${process.env.PATH || ""}` }
+  : process.env);
 const RAW_MAX = 200_000; // 收集上限,只是内存护栏;给模型的截断在工具装配层统一做
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -80,7 +85,7 @@ export const bash = async ({ command, summary, background, cwd: requestedCwd }, 
     const [shellBin, shellArgs] = shellInvocation(cmd);
     const child = spawn(shellBin, shellArgs, {
       cwd,
-      env: process.env,
+      env: shellEnv(),
       detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"],
     });

@@ -1,0 +1,31 @@
+// 界面用到的全部 CodeMirror 导出,集中在一个入口;scripts/vendor-codemirror.mjs 把它打成 ui/vendor/codemirror-all.js。
+// 要用新的 CodeMirror API:在这里加一行 export,再跑 npm run vendor:codemirror。
+export { basicSetup, minimalSetup } from "codemirror";
+export { EditorState } from "@codemirror/state";
+export { EditorView, keymap, lineNumbers } from "@codemirror/view";
+export { indentWithTab } from "@codemirror/commands";
+export { StreamLanguage } from "@codemirror/language";
+export { MergeView } from "@codemirror/merge";
+export { oneDark } from "@codemirror/theme-one-dark";
+export { javascript } from "@codemirror/lang-javascript";
+export { markdown } from "@codemirror/lang-markdown";
+export { json } from "@codemirror/lang-json";
+export { html } from "@codemirror/lang-html";
+export { css } from "@codemirror/lang-css";
+export { python } from "@codemirror/lang-python";
+export { yaml } from "@codemirror/lang-yaml";
+export { go } from "@codemirror/lang-go";
+export { rust } from "@codemirror/lang-rust";
+export { sql } from "@codemirror/lang-sql";
+export { cpp } from "@codemirror/lang-cpp";
+export { java } from "@codemirror/lang-java";
+export { php } from "@codemirror/lang-php";
+export { xml } from "@codemirror/lang-xml";
+export { shell } from "@codemirror/legacy-modes/mode/shell";
+export { toml } from "@codemirror/legacy-modes/mode/toml";
+export { ruby } from "@codemirror/legacy-modes/mode/ruby";
+export { swift } from "@codemirror/legacy-modes/mode/swift";
+export { lua } from "@codemirror/legacy-modes/mode/lua";
+export { diff } from "@codemirror/legacy-modes/mode/diff";
+export { kotlin } from "@codemirror/legacy-modes/mode/clike";
+export { dockerFile } from "@codemirror/legacy-modes/mode/dockerfile";

@@ -1,33 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { basicSetup, EditorView } from "codemirror";
-import { oneDark } from "@codemirror/theme-one-dark";
+// CodeMirror 全部从一个 vendor 文件来(ui/vendor/codemirror-all.js,见 scripts/vendor-codemirror.mjs):多份 @codemirror/state 会互不相认
+import { basicSetup, EditorView, oneDark, EditorState, keymap, indentWithTab, javascript, markdown, json, html, css, python, yaml, go, rust, sql, cpp, java, php, xml, StreamLanguage, shell, toml, ruby, swift, lua, diff as diffMode, kotlin, dockerFile } from "codemirror-all";
 import { THEME_EVENT, resolvedTheme } from "../../lib/theme";
-import { EditorState } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
-import { indentWithTab } from "@codemirror/commands";
-import { javascript } from "@codemirror/lang-javascript";
-import { markdown } from "@codemirror/lang-markdown";
-import { json } from "@codemirror/lang-json";
-import { html } from "@codemirror/lang-html";
-import { css } from "@codemirror/lang-css";
-import { python } from "@codemirror/lang-python";
-import { yaml } from "@codemirror/lang-yaml";
-import { go } from "@codemirror/lang-go";
-import { rust } from "@codemirror/lang-rust";
-import { sql } from "@codemirror/lang-sql";
-import { cpp } from "@codemirror/lang-cpp";
-import { java } from "@codemirror/lang-java";
-import { php } from "@codemirror/lang-php";
-import { xml } from "@codemirror/lang-xml";
-import { StreamLanguage } from "@codemirror/language";
-import { shell } from "@codemirror/legacy-modes/mode/shell";
-import { toml } from "@codemirror/legacy-modes/mode/toml";
-import { ruby } from "@codemirror/legacy-modes/mode/ruby";
-import { swift } from "@codemirror/legacy-modes/mode/swift";
-import { lua } from "@codemirror/legacy-modes/mode/lua";
-import { diff as diffMode } from "@codemirror/legacy-modes/mode/diff";
-import { kotlin } from "@codemirror/legacy-modes/mode/clike";
-import { dockerFile } from "@codemirror/legacy-modes/mode/dockerfile";
 
 // 按文件名挑语言(认不出就纯文本)。编辑器与 diff 视图共用。
 export function langFor(filename: string) {

@@ -3,8 +3,7 @@ node_modules/
 .pnpm-store/
 
 # ─── 构建产物 ───
-ui/dist/
-dist/
+# ui/dist/ 和 dist/server.mjs 进 git:形态在用户机器上直接跑,回滚瞬间可用(launcher 契约)
 release/
 *.tsbuildinfo
 
@@ -53,9 +52,8 @@ coverage/
 # agent 工作区(app 托管的真实目录)
 .claude/launch.json
 
-# esbuild 产物(build:updater)
-desktop/updater.mjs
-electron-builder-unsigned.json
+# launcher 的记录(在 workspace 里跑时才有)
+.iimos/
 
 # ─── 不开源:内部文档 ───
 .dev/
@@ -64,3 +62,6 @@ CLAUDE.md
 # ─── Cloudflare 部署配置(只提交 example) ───
 site/wrangler.jsonc
 .wrangler/
+
+# 官网(site/)自己的构建产物
+site/ui/dist/

@@ -4,6 +4,7 @@
 // 文件、网络、进程它本来就有,不需要宿主转手。
 //
 // 两道闸,顺序不能反:先认 token(你是谁),再查 manifest.permissions(你被允许什么)。
+import { notify } from "../iimos.js";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { complete } from "../ai/complete.js";
 import { getSettings } from "../settings/store.js";
@@ -113,6 +114,7 @@ export const handleAppHostRoutes = async (
         kind: input.kind === "badge" ? "badge" : "toast",
         text,
       });
+      void notify(app.name || app.id, text); // 窗口不在前面时用户也能看到
       json(res, 200, { ok: true });
       return true;
     }

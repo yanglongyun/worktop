@@ -228,5 +228,8 @@ export const startWidgetSiteSweeper = () => {
 
 
 /** 供调试:当前在跑的组件站点。 */
+/** 关掉全部组件站点(服务收尾用)。 */
+export const closeAllWidgetSites = () => { for (const id of Array.from(sites.keys())) closeWidgetSite(id); };
+
 export const listWidgetSites = () =>
   [...sites.entries()].map(([id, s]) => ({ id, port: s.port, idleMs: Date.now() - s.lastHit, exists: !!listWidgets().find((w) => w.id === id) }));

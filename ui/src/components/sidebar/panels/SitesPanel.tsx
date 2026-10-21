@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Download, Eye, EyeOff, Folder, FolderPlus, Globe, History, Key, Pencil, Plus, Star, Pin, PinOff, Trash, Upload, User, X } from "../../ui/icons";
 import { isPinned, togglePin } from "../../../lib/railPins";
 import { beginGlobalDrag, endGlobalDrag } from "../../../lib/drag";
-import { ChromeImportDialog, ContextMenu, dialog, showToast, type MenuItem } from "../../ui";
+import { ContextMenu, dialog, showToast, type MenuItem } from "../../ui";
 import { Toolbar } from "../Toolbar";
 import { PanelEmptyState } from "./PanelEmptyState";
 
@@ -225,7 +225,6 @@ export function SitesPanel({ onOpenUrl, socket }: {
   // ── 密码 ──
   const [pwEditing, setPwEditing] = useState<{ id: string | null; url: string; username: string; password: string; note: string } | null>(null);
   const [pwShowInput, setPwShowInput] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const copyText = async (text: string, what: string) => {
     try { await navigator.clipboard.writeText(text); showToast(`${what}已复制`); } catch { /* 剪贴板不可用 */ }
   };
@@ -314,7 +313,6 @@ export function SitesPanel({ onOpenUrl, socket }: {
   const moreItems = (): MenuItem[] => view === "sites"
     ? [
       { label: "新建文件夹…", icon: <FolderPlus size={13} />, onClick: () => void addFolder() },
-      { label: "从 Chrome 导入书签…", icon: <Download size={13} />, onClick: () => setImportOpen(true) },
       "divider",
       { label: "展开全部", icon: <ChevronsUpDown size={13} />, disabled: !folderIds.length, onClick: expandAll },
       { label: "折叠全部", icon: <ChevronsDownUp size={13} />, disabled: !open.size, onClick: collapseAll },
@@ -322,7 +320,6 @@ export function SitesPanel({ onOpenUrl, socket }: {
     : view === "history"
       ? [{ label: "清空浏览记录", icon: <Trash size={13} />, danger: true, disabled: !history.length, onClick: () => void clearHistory() }]
       : [
-        { label: "从 Chrome 导入…", icon: <Download size={13} />, onClick: () => setImportOpen(true) },
         { label: "导入 CSV…", icon: <Upload size={13} />, onClick: importCsv },
         { label: "导出 CSV", icon: <Download size={13} />, disabled: !passwords.length, onClick: () => void exportPasswords() },
         "divider",
@@ -613,10 +610,10 @@ export function SitesPanel({ onOpenUrl, socket }: {
               {sitesLoaded && !sites.length && !siteEditing && (
                 <PanelEmptyState
                   title="还没有收藏的网站"
-                  description="从 Chrome 导入书签，也可以点击上方 ＋ 添加常用网站。"
-                  action="从 Chrome 导入"
-                  icon={<Download size={13} />}
-                  onAction={() => setImportOpen(true)}
+                  description="点击上方 ＋ 添加常用网站,或在网页标签里点星标收藏。"
+                  action="添加网站"
+                  icon={<Plus size={13} />}
+                  onAction={() => add()}
                 />
               )}
             </>
@@ -650,10 +647,10 @@ export function SitesPanel({ onOpenUrl, socket }: {
               ? empty("没有匹配的密码")
               : (
                 <div className="px-4 py-8 text-center text-[12.5px] text-text-faint leading-relaxed">
-                  还没有密码。<br />从 Chrome 导入,或导入密码管理器导出的 CSV。
+                  还没有密码。<br />点击上方 ＋ 添加,或导入密码管理器导出的 CSV。
                   <div className="mt-3">
-                    <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-accent text-white text-[12.5px] hover:opacity-90">
-                      <Download size={13} /> 从 Chrome 导入
+                    <button onClick={importCsv} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-accent text-white text-[12.5px] hover:opacity-90">
+                      <Upload size={13} /> 导入 CSV
                     </button>
                   </div>
                 </div>
@@ -662,15 +659,6 @@ export function SitesPanel({ onOpenUrl, socket }: {
         </div>
       )}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />}
-      {importOpen && (
-        <ChromeImportDialog
-          onClose={() => setImportOpen(false)}
-          onDone={(r) => {
-            loadPasswords(); load();
-            showToast(`已从 ${r.profile} 导入:${r.imported} 条登录信息${r.bookmarks ? `、${r.bookmarks} 个网站` : ""}${r.passwords ? `、${r.passwords} 条密码` : ""}`);
-          }}
-        />
-      )}
     </div>
   );
 }

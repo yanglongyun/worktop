@@ -1,5 +1,6 @@
 import { execFile, execFileSync } from "child_process";
 import path from "path";
+import { call, hasIimos } from "../iimos.js";
 
 const run = (cmd: string, args: string[], opts: Record<string, unknown> = {}) =>
   new Promise<string>((resolve, reject) => {
@@ -30,6 +31,12 @@ const isCancel = (error: any) => {
 };
 
 const pickDirectory = async () => {
+  // 在 iimos 里:文件夹对话框由 launcher 开(契约 dialog.open),取消时 paths 为空数组
+  if (hasIimos()) {
+    const result = await call("dialog.open", { title: "选择文件夹", directory: true });
+    const picked = Array.isArray(result?.paths) ? result.paths[0] : null;
+    return picked ? path.resolve(String(picked)) : null;
+  }
   try {
     if (process.platform === "darwin") {
       const picked = await run("osascript", [

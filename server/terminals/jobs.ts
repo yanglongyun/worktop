@@ -12,7 +12,7 @@ import { DATA_HOME } from "../system/paths.js";
 import { spawn, type ChildProcess } from "child_process";
 import { randomUUID } from "crypto";
 import { createWriteStream, existsSync, mkdirSync } from "fs";
-import { join } from "path";
+import { delimiter, join } from "path";
 import type { WriteStream } from "fs";
 import { emit } from "../bus.js";
 
@@ -161,7 +161,11 @@ const startProcess = ({ command, cwd: requestedCwd, reason = "" }: { command: st
     shell,
     detached: process.platform !== "win32",
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, FORCE_COLOR: "0" },
+    env: {
+      ...process.env,
+      FORCE_COLOR: "0",
+      PATH: process.env.IIMOS_BIN ? `${process.env.IIMOS_BIN}${delimiter}${process.env.PATH || ""}` : (process.env.PATH || ""),
+    },
   });
 
   let logStream: WriteStream | null = null;

@@ -1,9 +1,9 @@
+// 界面的静态文件:ui/index.html 只引用 dist/main.js 和 dist/main.css(iimos build 编出来的),加一个 icon.svg。
 import { REPO_ROOT } from "../system/paths.js";
 import fs from "fs";
 import path from "path";
 
-// WORKTOP_UI_DIST:打包 app 里前端在只读资源区;开发态就在仓库根的 ui/dist。
-const DIST = path.resolve(process.env.WORKTOP_UI_DIST || path.join(REPO_ROOT, "ui/dist"));
+const UI = path.join(REPO_ROOT, "ui");
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -19,23 +19,29 @@ const MIME: Record<string, string> = {
 const isFile = (p: string) => { try { return fs.statSync(p).isFile(); } catch { return false; } };
 
 const serve = (res: import("http").ServerResponse, pathname: string) => {
-  const index = path.join(DIST, "index.html");
-  if (!isFile(index)) {
-    res.writeHead(503, { "Content-Type": "text/plain" });
-    res.end("GUI not built. Run: npm run build\n");
+  const index = path.join(UI, "index.html");
+  if (!isFile(path.join(UI, "dist", "main.js"))) {
+    res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("界面还没编译:iimos build(或 npm run build)\n");
     return;
   }
-  const target = path.normalize(path.join(DIST, pathname === "/" ? "/index.html" : pathname));
-  if (!target.startsWith(DIST)) { res.writeHead(400); res.end(); return; }
+  // 只放 dist/ 和根上的几个文件;src/ vendor/ 不对外
+  const allowed = pathname === "/" || pathname === "/index.html" || pathname === "/icon.svg" || pathname.startsWith("/dist/");
+  const target = path.normalize(path.join(UI, pathname === "/" ? "/index.html" : pathname));
+  if (!target.startsWith(UI) || !allowed) {
+    // SPA fallback:页面路由都回 index.html
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(fs.readFileSync(index));
+    return;
+  }
   if (isFile(target)) {
     const ext = path.extname(target).toLowerCase();
-    res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
+    res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream", "Cache-Control": "no-cache" });
     res.end(fs.readFileSync(target));
     return;
   }
-  // SPA fallback
-  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-  res.end(fs.readFileSync(index));
+  res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+  res.end("not found\n");
 };
 
 export { serve };

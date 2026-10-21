@@ -1,18 +1,37 @@
 // 交互式终端会话,按 ws 连接分组:连接断了,它开的终端全部收尾。
-import { existsSync } from "fs";
-import * as pty from "node-pty";
+//
+// 伪终端由 launcher 提供(契约 terminal.*):形态进程里装不了 node-pty 这类原生模块,
+// launcher 借系统自带的 expect 开 pty,输出走 terminal.data 事件推回来,这里按终端 id 分发给对应的 ws 客户端。
+// 不经 launcher 跑时没有终端,给界面一条明确的错误。
+import path from "node:path";
 import { terminalDirectory } from "../agent/paths.js";
+import { call, hasIimos, on } from "../iimos.js";
 
-type Session = { id: string; term: pty.IPty; cwd: string };
+type Session = { id: string; launcherId: string; cwd: string; send: SendJson; client: Client };
 /** ws 连接:终端会话挂在连接对象上,连接消失即随之回收。 */
 type Client = { terminals?: Map<string, Session> };
 type SendJson = (message: Record<string, unknown>) => void;
 
-const SHELL_CANDIDATES = process.platform === "win32"
-  ? [process.env.COMSPEC, "powershell.exe", "cmd.exe"]
-  : [process.env.SHELL, "/bin/zsh", "/bin/bash", "/bin/sh"];
+/** launcher 那边的终端 id → 会话。launcher 的事件只带它自己的 id。 */
+const byLauncherId = new Map<string, Session>();
+let subscribed = false;
 
-const resolveShell = () => SHELL_CANDIDATES.find((s) => s && existsSync(s)) || "/bin/sh";
+const subscribe = () => {
+  if (subscribed) return;
+  subscribed = true;
+  on("terminal.data", ({ id, data }: { id: string; data: string }) => {
+    const session = byLauncherId.get(String(id));
+    if (session && data) session.send({ type: "terminal_output", terminalId: session.id, data: String(data) });
+  });
+  on("terminal.exit", ({ id, code, signal, error }: { id: string; code: number | null; signal: string | null; error?: string }) => {
+    const session = byLauncherId.get(String(id));
+    if (!session) return;
+    byLauncherId.delete(String(id));
+    session.client.terminals?.delete(session.id);
+    if (error) session.send({ type: "terminal_error", terminalId: session.id, error });
+    session.send({ type: "terminal_exit", terminalId: session.id, code, signal });
+  });
+};
 
 const publicCwd = (cwd: string) => String(cwd || "").replace(process.env.HOME || "", "~");
 
@@ -21,21 +40,14 @@ const ensureTerminalMap = (client: Client) => {
   return client.terminals;
 };
 
-const writeOutput = (sendJson: SendJson, terminalId: string, data: string) => {
-  if (!data) return;
-  sendJson({ type: "terminal_output", terminalId, data: String(data) });
-};
-
 const stopTerminal = (client: Client, terminalId: string, sendJson?: SendJson) => {
   const sessions = ensureTerminalMap(client);
   const id = String(terminalId || "");
   const session = sessions.get(id);
   if (!session) return;
   sessions.delete(id);
-  try { session.term.write("exit\r"); } catch { /* 已经死了 */ }
-  setTimeout(() => {
-    try { session.term.kill(); } catch { /* 已经死了 */ }
-  }, 300);
+  byLauncherId.delete(session.launcherId);
+  void call("terminal.kill", { id: session.launcherId }).catch(() => { /* 已经没了 */ });
   sendJson?.({ type: "terminal_exit", terminalId: id, code: null, signal: "stopped" });
 };
 
@@ -44,7 +56,7 @@ const stopAllTerminals = (client: Client, sendJson?: SendJson) => {
   for (const id of Array.from(sessions.keys())) stopTerminal(client, id, sendJson);
 };
 
-const startTerminal = (client: Client, payload: any, sendJson: SendJson) => {
+const startTerminal = async (client: Client, payload: any, sendJson: SendJson) => {
   const sessions = ensureTerminalMap(client);
   const terminalId = String(payload.terminalId || "").trim();
   if (!terminalId) {
@@ -52,6 +64,10 @@ const startTerminal = (client: Client, payload: any, sendJson: SendJson) => {
     return;
   }
   if (sessions.has(terminalId)) stopTerminal(client, terminalId, sendJson);
+  if (!hasIimos()) {
+    sendJson({ type: "terminal_error", terminalId, error: "终端需要在 iimos 里运行(当前没有 launcher,拿不到伪终端)" });
+    return;
+  }
 
   let cwd: string;
   try {
@@ -61,55 +77,54 @@ const startTerminal = (client: Client, payload: any, sendJson: SendJson) => {
     return;
   }
 
-  const shell = resolveShell();
-  let term: pty.IPty;
+  subscribe();
+  // 占个位:spawn 期间界面可能又发了 stop,占位让 stop 能找到它
+  const placeholder: Session = { id: terminalId, launcherId: "", cwd, send: sendJson, client };
+  sessions.set(terminalId, placeholder);
+  let term: { id: string; pty: boolean; resizable: boolean; cwd: string };
   try {
-    term = pty.spawn(shell, process.platform === "win32" ? [] : ["-i"], {
-      name: "xterm-256color",
+    term = await call("terminal.spawn", {
+      cwd,
       cols: Math.max(20, Number(payload.cols) || 100),
       rows: Math.max(5, Number(payload.rows) || 30),
-      cwd,
+      args: process.platform === "win32" ? [] : ["-i"],
       env: {
-        ...process.env,
-        TERM: "xterm-256color",
-        COLORTERM: "truecolor",
+        // launcher 的 node / iimos 命令在 IIMOS_BIN,放进 PATH 让终端里直接能用
+        PATH: process.env.IIMOS_BIN ? `${process.env.IIMOS_BIN}${path.delimiter}${process.env.PATH || ""}` : (process.env.PATH || ""),
         CLICOLOR: "1",
         FORCE_COLOR: "1",
       },
     });
   } catch (error) {
+    if (sessions.get(terminalId) === placeholder) sessions.delete(terminalId);
     sendJson({ type: "terminal_error", terminalId, error: (error as Error).message || String(error) });
     return;
   }
-
-  const session: Session = { id: terminalId, term, cwd };
-  term.onData((data: string) => writeOutput(sendJson, terminalId, data));
-  term.onExit(({ exitCode, signal }: { exitCode: number; signal?: number }) => {
-    if (sessions.get(terminalId) !== session) return;
-    sessions.delete(terminalId);
-    sendJson({ type: "terminal_exit", terminalId, code: exitCode, signal });
-  });
+  if (sessions.get(terminalId) !== placeholder) {
+    // 等 spawn 的这一会儿被 stop 了,或者又 start 了一次:把刚开的这个收掉
+    void call("terminal.kill", { id: term.id }).catch(() => {});
+    return;
+  }
+  const session: Session = { ...placeholder, launcherId: term.id, cwd: term.cwd || cwd };
   sessions.set(terminalId, session);
-  sendJson({ type: "terminal_started", terminalId, cwd, title: payload.title || publicCwd(cwd) });
+  byLauncherId.set(term.id, session);
+  sendJson({ type: "terminal_started", terminalId, cwd: session.cwd, title: payload.title || publicCwd(session.cwd), pty: term.pty, resizable: term.resizable });
+  if (!term.pty) sendJson({ type: "terminal_output", terminalId, data: "\r\n[这台机器上拿不到伪终端,命令照常能跑,但交互式程序(vim / top)不可用]\r\n" });
 };
 
 const writeTerminal = (client: Client, payload: any) => {
-  const sessions = ensureTerminalMap(client);
-  const terminalId = String(payload.terminalId || "");
-  const session = sessions.get(terminalId);
-  if (!session) return;
-  session.term.write(String(payload.data || ""));
+  const session = ensureTerminalMap(client).get(String(payload.terminalId || ""));
+  if (!session?.launcherId) return;
+  void call("terminal.write", { id: session.launcherId, data: String(payload.data || "") }).catch(() => {});
 };
 
 const resizeTerminal = (client: Client, payload: any) => {
-  const sessions = ensureTerminalMap(client);
-  const terminalId = String(payload.terminalId || "");
-  const session = sessions.get(terminalId);
-  if (!session) return;
+  const session = ensureTerminalMap(client).get(String(payload.terminalId || ""));
+  if (!session?.launcherId) return;
   const cols = Math.max(20, Number(payload.cols) || 0);
   const rows = Math.max(5, Number(payload.rows) || 0);
   if (!cols || !rows) return;
-  try { session.term.resize(cols, rows); } catch { /* 尺寸非法或已退出 */ }
+  void call("terminal.resize", { id: session.launcherId, cols, rows }).catch(() => { /* 尺寸非法或已退出 */ });
 };
 
 export { startTerminal, stopTerminal, stopAllTerminals, writeTerminal, resizeTerminal };

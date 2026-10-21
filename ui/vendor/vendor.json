@@ -1,0 +1,32 @@
+{
+  "@dnd-kit/core": {
+    "version": "6.3.1",
+    "file": "dnd-kit__core.js",
+    "source": "https://esm.sh/@dnd-kit/core@6.3.1?external=react,react-dom&target=es2022",
+    "at": "2026-10-21T08:35:28.062Z"
+  },
+  "@xterm/xterm": {
+    "version": "6.0.0",
+    "file": "xterm__xterm.js",
+    "source": "https://esm.sh/@xterm/xterm@6.0.0?external=react,react-dom&target=es2022",
+    "at": "2026-10-21T08:35:31.242Z"
+  },
+  "@xterm/addon-fit": {
+    "version": "0.11.0",
+    "file": "xterm__addon-fit.js",
+    "source": "https://esm.sh/@xterm/addon-fit@0.11.0?external=react,react-dom&target=es2022",
+    "at": "2026-10-21T08:35:32.880Z"
+  },
+  "marked": {
+    "version": "18.0.4",
+    "file": "marked.js",
+    "source": "https://esm.sh/marked@18.0.4?external=react,react-dom&target=es2022",
+    "at": "2026-10-21T08:35:34.949Z"
+  },
+  "codemirror-all": {
+    "version": "6.0.2",
+    "file": "codemirror-all.js",
+    "source": "scripts/vendor-codemirror.mjs(本地 esbuild 打包 ui/vendor-src/codemirror-all.ts,{\"codemirror\":\"6.0.2\",\"@codemirror/state\":\"6.7.6\",\"@codemirror/view\":\"6.43.15\",\"@codemirror/language\":\"6.13.1\",\"@codemirror/merge\":\"6.12.3\"})",
+    "at": "2026-10-21T08:35:48.005Z"
+  }
+}

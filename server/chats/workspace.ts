@@ -1,7 +1,6 @@
 // 工作区快照:界面此刻开着哪些标签、哪个激活、有没有分屏。
 // 界面每次标签增删/切换/分屏变化都推一份(ws: workspace_state),这里只留最新的一份,
 // 拼进 system prompt 的「# 工作区」段 —— 用户说「这个文件」「当前页面」时模型才知道指的是谁。
-import { wcIdForTabId } from "../browser/host.js";
 
 export type WorkspaceTabSnapshot = {
   id: string;
@@ -50,10 +49,8 @@ const line = (t: WorkspaceTabSnapshot, chatId: string) => {
   let body = t.title;
   if (t.kind === "file" || t.kind === "folder") body = t.path || t.title;
   else if (t.kind === "terminal") body = `${t.title}${t.path ? ` cwd=${t.path}` : ""}`;
-  else if (t.kind === "web") {
-    const wcId = wcIdForTabId(t.id);
-    body = `${t.title} ${t.url || ""}${wcId != null ? `(tab_id ${wcId})` : ""}`;
-  } else if (t.kind === "git" || t.kind === "git-diff") body = `${t.title}${t.path ? ` ${t.path}` : ""}`;
+  else if (t.kind === "web") body = `${t.title} ${t.url || ""}`;
+  else if (t.kind === "git" || t.kind === "git-diff") body = `${t.title}${t.path ? ` ${t.path}` : ""}`;
   else if (t.kind === "app") body = `${t.title}(${t.appId || ""})`;
   else if (t.kind === "chat" && t.id === chatId) body = `${t.title}(就是本对话)`;
   return `[${label}] ${body}${t.active ? " ←当前" : ""}`;

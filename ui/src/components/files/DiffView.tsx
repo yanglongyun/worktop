@@ -1,11 +1,7 @@
 // 变更对照视图:@codemirror/merge 的左右双栏,词级差异高亮 + 语法着色 + 折叠未变段。
 // 只读展示(暂存/丢弃等动作在外层工具条),Git diff 面板与将来的 AI 变更审阅共用。
 import { useEffect, useRef, useState } from "react";
-import { MergeView } from "@codemirror/merge";
-import { minimalSetup } from "codemirror";
-import { EditorView, lineNumbers } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
-import { oneDark } from "@codemirror/theme-one-dark";
+import { EditorState, EditorView, MergeView, lineNumbers, minimalSetup, oneDark } from "codemirror-all";
 import { THEME_EVENT, resolvedTheme } from "../../lib/theme";
 import { langFor } from "./CodeEditor";
 

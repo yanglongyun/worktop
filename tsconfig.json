@@ -12,7 +12,8 @@
     "allowJs": true,
     "types": ["node"],
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "paths": { "codemirror-all": ["./ui/vendor-src/codemirror-all.ts"] }
   },
-  "include": ["index.ts", "server", "ui/src"]
+  "include": ["main.js", "scripts", "server", "ui/src", "ui/vendor-src"]
 }

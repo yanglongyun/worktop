@@ -5,7 +5,7 @@
 // 六个工具:
 //   bash(background?)  — 命令与后台进程(读日志用 read 日志文件,停止用 kill)
 //   read / edit / write — 文件三件套
-//   browser            — 操作网页标签(Electron <webview>,真登录态,分屏可见)
+//   browser            — 控制用户的浏览器(经 launcher 转给 iimos 浏览器插件,CDP 原样转发)
 //   confirm            — 主动提醒(助手自己的判断;规则是用户定的闸,两者互补)
 import { bash, bashDef } from "./functions/bash.js";
 import { edit, editDef, read, readDef, write, writeDef } from "./functions/files.js";

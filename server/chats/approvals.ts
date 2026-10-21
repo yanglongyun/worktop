@@ -4,6 +4,7 @@
 // 而挂住的那一轮既不入库也不报错,是最难查的一类故障。
 import { randomUUID } from "node:crypto";
 import { emit } from "../bus.js";
+import { notify } from "../iimos.js";
 
 const TIMEOUT_MS = 300_000;
 
@@ -54,5 +55,6 @@ export const requestConfirm = (
     signal?.addEventListener("abort", onAbort, { once: true });
     pending.set(id, { resolve, timer, card, cleanup: () => signal?.removeEventListener("abort", onAbort) });
     emit({ type: "approval_ask", ...card });
+    void notify("worktop 等你确认", summary);
   });
 };

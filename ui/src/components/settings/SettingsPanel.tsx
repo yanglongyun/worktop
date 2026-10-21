@@ -3,9 +3,7 @@ import { type SkillInfo } from "../../api/skills";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { getThemePref, setThemePref, type ThemePref } from "../../lib/theme";
 import { SEARCH_ENGINES, getSearchEngine, setSearchEngine, type SearchEngineId } from "../../lib/search";
-import { chromeImportAvailable } from "../../lib/chromeImport";
 import { Bot, Check, ExternalLink, Globe, Info, Loader, Settings as SettingsIcon, Sparkles, SlidersHorizontal } from "../ui/icons";
-import { ChromeImportDialog } from "../ui";
 import { ModelConnectionFields, settingsInputClass as inputClass } from "./ModelConnectionFields";
 import { SkillsSettings } from "./SkillsSettings";
 
@@ -15,11 +13,11 @@ const emptySettings: Settings = {
 };
 const categories = [
   { id: "model", label: "模型", icon: Bot, description: "连接模型，设置助手的回应方式。" },
-  { id: "browser", label: "浏览器", icon: Globe, description: "管理搜索偏好、导入数据和网站状态。" },
+  { id: "browser", label: "浏览器", icon: Globe, description: "地址栏和新标签页的搜索偏好。" },
   { id: "skills", label: "技能", icon: Sparkles, description: "点击技能名称，在新标签页阅读说明。" },
-  { id: "general", label: "通用", icon: SettingsIcon, description: "让 Worktop 更符合你的使用习惯。" },
+  { id: "general", label: "通用", icon: SettingsIcon, description: "让 worktop 更符合你的使用习惯。" },
   { id: "advanced", label: "高级", icon: SlidersHorizontal, description: "调整长对话和工具结果的处理方式。" },
-  { id: "about", label: "关于", icon: Info, description: "Worktop · 个人 AI 工作台" },
+  { id: "about", label: "关于", icon: Info, description: "worktop · iimos 的工作台形态" },
 ] as const;
 type Category = typeof categories[number]["id"];
 type SaveGroup = "connection" | "system" | "advanced" | "telemetry";
@@ -123,7 +121,7 @@ export function SettingsPanel({ onSaved, onOpenSkill }: { onSaved?: (settings: S
                   {SEARCH_ENGINES.map((engine) => <option key={engine.id} value={engine.id}>{engine.name}</option>)}
                 </select>
               </Field>{localNote === "search" && <SavedNote />}</Section>
-              <BrowserData />
+              <Section title="AI 操作网页" description="AI 通过 iimos 浏览器插件控制你的 Chrome / Edge(带你的登录态)。插件在 iimos 仓库的 extension/ 目录,在浏览器的扩展页「加载已解压的扩展程序」即可。" />
             </div>
             {category === "skills" && <SkillsSettings onOpenSkill={onOpenSkill} />}
             <div hidden={category !== "general"} className="space-y-6">
@@ -170,13 +168,12 @@ export function SettingsPanel({ onSaved, onOpenSkill }: { onSaved?: (settings: S
                 </form>
               </Section>
             </div>
-            <div hidden={category !== "about"}><Section title="Worktop">
+            <div hidden={category !== "about"}><Section title="worktop">
               <div className="flex items-center justify-between text-[13px]"><span className="text-text-dim">当前版本</span><span className="text-text">{__APP_VERSION__}</span></div>
+              <p className="mt-3 text-[12px] leading-relaxed text-text-faint">worktop 是 iimos 的一个形态:这份界面和服务的源码就在你的电脑上,想改什么,在对话里说就行。</p>
               <div className="mt-5 flex items-center gap-5">
-                {window.worktopDesktop?.checkUpdates && (
-                  <button type="button" onClick={() => void window.worktopDesktop?.checkUpdates()} className="text-[13px] text-accent hover:underline">检查更新</button>
-                )}
-                <a href="https://github.com/yanglongyun/Worktop" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[13px] text-accent hover:underline">访问 GitHub 项目<ExternalLink size={13} /></a>
+                <a href="https://iimos.ai/s/worktop" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[13px] text-accent hover:underline">iimos.ai 上的 worktop<ExternalLink size={13} /></a>
+                <a href="https://github.com/yanglongyun/worktop" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[13px] text-accent hover:underline">GitHub<ExternalLink size={13} /></a>
               </div>
             </Section></div>
           </>}
@@ -193,10 +190,10 @@ function PromptEditor({ label, name, value, disabled, onChange }: {
     value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} />;
 }
 
-function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+function Section({ title, description, children }: { title: string; description?: string; children?: ReactNode }) {
   return <section className="border-b border-border pb-6 last:border-b-0 last:pb-0"><h2 className="text-[13px] font-medium text-text">{title}</h2>
     {description && <p className="mt-1.5 text-[12px] leading-relaxed text-text-faint">{description}</p>}
-    <div className="mt-4">{children}</div>
+    {children && <div className="mt-4">{children}</div>}
   </section>;
 }
 function Field({ label, description, children }: { label: string; description?: string; children: ReactNode }) {
@@ -217,46 +214,4 @@ function SaveFooter({ dirty, state, disabled }: { dirty: boolean; state?: SaveSt
       {state?.busy && <Loader size={13} className="animate-spin" />}{state?.busy ? "保存中…" : "保存更改"}
     </button>
   </div>}</>;
-}
-
-function BrowserData() {
-  const [available, setAvailable] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const [busy, setBusy] = useState("");
-  const [note, setNote] = useState("");
-  const [error, setError] = useState(false);
-  useEffect(() => { void chromeImportAvailable().then(setAvailable).catch(() => setAvailable(false)); }, []);
-  const run = async (key: string, action: () => Promise<string>) => {
-    setBusy(key); setNote(""); setError(false);
-    try { setNote(await action()); }
-    catch (e) { setError(true); setNote(e instanceof Error ? e.message : "操作失败"); }
-    finally { setBusy(""); }
-  };
-  const desktop = window.worktopDesktop;
-  return <>
-    {importOpen && <ChromeImportDialog onClose={() => setImportOpen(false)} onDone={(r) => {
-      setError(false);
-      setNote(`已从 ${r.profile} 导入 ${r.imported} 条登录信息${r.failed ? `，跳过 ${r.failed} 条` : ""}${r.bookmarks ? `，新增 ${r.bookmarks} 个网站` : ""}。刷新页面后生效。`);
-    }} />}
-    <Section title="导入数据"><ActionRow label="从 Chrome 导入" description={available ? "选择要导入的书签与登录数据。导入登录信息需通过系统钥匙串授权。" : "需要 macOS 上装有 Chrome。"}>
-      <button className={secondaryButton} disabled={!available || !!busy} onClick={() => setImportOpen(true)}>从 Chrome 导入</button>
-    </ActionRow></Section>
-    <Section title="网站数据"><div className="space-y-5">
-      <ActionRow label="缓存" description="释放磁盘空间，保留网站登录状态。"><button className={secondaryButton} disabled={!desktop || !!busy} onClick={() => void run("cache", async () => {
-        const r = await desktop!.clearWebCache(); if (!r.ok) throw new Error(r.error || "清除失败"); return "缓存已清除";
-      })}>{busy === "cache" ? "清除中…" : "清除缓存"}</button></ActionRow>
-      <ActionRow label="登录状态" description="清除 Cookie 与站点数据，所有网站将退出登录。"><button className={secondaryButton} disabled={!desktop || !!busy} onClick={() => void run("logout", async () => {
-        const r = await desktop!.clearWebLogins(); if (!r.ok) throw new Error(r.error || "清除失败"); return "已退出所有网站";
-      })}>{busy === "logout" ? "退出中…" : "退出所有网站"}</button></ActionRow>
-      <ActionRow label="网站权限" description="重置摄像头、麦克风、位置等授权及证书例外，下次访问时重新询问。"><button className={secondaryButton} disabled={!desktop || !!busy} onClick={() => void run("perm", async () => {
-        await desktop!.forgetWebPermissions(); return "网站权限已重置";
-      })}>{busy === "perm" ? "重置中…" : "重置网站权限"}</button></ActionRow>
-    </div></Section>
-    {note && <p role={error ? "alert" : "status"} className={`text-[12px] leading-relaxed ${error ? "text-danger" : "text-text-dim"}`}>{note}</p>}
-  </>;
-}
-function ActionRow({ label, description, children }: { label: string; description: string; children: ReactNode }) {
-  return <div className="flex items-center gap-5 @max-[640px]:flex-wrap @max-[640px]:gap-3">
-    <div className="min-w-0 flex-1 @max-[640px]:basis-full"><div className="text-[13px] font-medium text-text">{label}</div><p className="mt-1 text-[12px] leading-relaxed text-text-faint">{description}</p></div>{children}
-  </div>;
 }

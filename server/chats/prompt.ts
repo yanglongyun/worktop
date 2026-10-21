@@ -11,6 +11,8 @@ import { executionDirectory, outputDirectory } from "../agent/paths.js";
 import { listProductSkills } from "../skills/registry.js";
 import { widgetsHome } from "../widgets/registry.js";
 import { workspaceSection } from "./workspace.js";
+import fs from "node:fs";
+import { REPO_ROOT } from "../system/paths.js";
 
 const appsSection = () => {
   const apps = listApps();
@@ -49,6 +51,22 @@ const skillsSection = () => {
 ${product.join("\n")}`;
 };
 
+const read = (file: string, limit = 40000) => {
+  try { return fs.readFileSync(file, "utf8").slice(0, limit); } catch { return ""; }
+};
+
+/** 你在 iimos 里:launcher 契约 + 这份形态自己的 AGENT.md + 回滚通知。每轮现读,它们都可能刚被改过。 */
+const iimosSection = () => {
+  const parts: string[] = [];
+  const contract = read(process.env.IIMOS_CONTRACT || "");
+  if (contract) parts.push(contract);
+  const agentDoc = read(path.join(REPO_ROOT, "AGENT.md"));
+  if (agentDoc) parts.push(`# 当前的 AGENT.md\n\n${agentDoc}`);
+  const rollback = read(path.join(REPO_ROOT, ".iimos", "rollback.json"));
+  if (rollback) parts.push(`# 注意:应用被 launcher 回滚过\n\n${rollback}\n先告诉用户发生了什么。处理完后删掉 .iimos/rollback.json。`);
+  return parts.length ? `\n\n---\n\n${parts.join("\n\n---\n\n")}` : "";
+};
+
 export const buildSystem = (
   chat: { id: string; system?: string | null },
   settings: { system?: string; rulesEnabled?: string },
@@ -83,8 +101,8 @@ export const buildSystem = (
   截断的输出不可找回。
 - read / edit / write — 文件三件套:有界读(带行号)/ 精确替换 / 新建或整体重写。改文件首选 edit,别用 bash sed。
   read 读到图片时会把图像直接交给你查看。
-- browser(action, ...) — 操作工作台里的网页标签:内置真浏览器,带用户登录态,用户看得见你在操作。
-  先 snapshot 拿页面元素清单,再用 ref 定位点击、填写、选择;动作清单和参数以工具描述为准。
+- browser(action, ...) — 控制用户的浏览器(Chrome / Edge,要装 iimos 插件):tabs / open / close 管标签页,cdp 原样发 Chrome 开发者工具协议命令。
+  只能操作你自己 open 的标签页;插件没连上会明确报错,这时告诉用户去装。
 ${confirmDoc}
 每个工具都必须带 summary:一句话说明这次调用的目的,用户会在界面上看到。
 文件工具优先使用绝对路径,也支持 ~/。相对路径从本轮默认起点解析。每次 bash 调用独立;一次命令中的 cd 不会改变后续调用的起点。
@@ -95,8 +113,9 @@ ${confirmDoc}
 - 要看网页、查资料、操作站点,用 browser。
 
 # 你在哪
-Worktop 是 macOS 上的个人 AI 工作台。用户通过对话交代任务，也可以从左侧活动栏访问文件、网站、应用和小组件。
-对话、文件、终端、网页和应用在标签页中打开，支持分屏并排查看。需要交付文件时，生成用户能打开使用的真实文件。
-组件(侧栏「小组件」面板里的小工具)住在 ${widgetsHome()}/<id>/,用户要造一个时按「技能」里的说明做。${workspaceSection(chat.id)}${appsSection()}${rulesBlock ? "\n\n" + rulesBlock : ""}
+worktop 是 iimos 的一个形态:个人 AI 工作台。用户通过对话交代任务,也可以从左侧活动栏访问文件、网站、应用和小组件。
+对话、文件、终端、网页和应用在标签页中打开,支持分屏并排查看。需要交付文件时,生成用户能打开使用的真实文件。
+组件(侧栏「小组件」面板里的小工具)住在 ${widgetsHome()}/<id>/,用户要造一个时按「技能」里的说明做。
+你自己的源码在 ${REPO_ROOT}(workspace):用户要改界面、加功能、换做法,就在那里改,然后 iimos reload / restart;怎么改见下面的 launcher 契约和 AGENT.md。${workspaceSection(chat.id)}${appsSection()}${rulesBlock ? "\n\n" + rulesBlock : ""}${iimosSection()}
 `;
 };
