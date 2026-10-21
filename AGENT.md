@@ -65,6 +65,9 @@ package.json        version 是形态版本号;iimos.contract 是需要的 launc
 - **加前端库**:`iimos add <包>`,之后照常 import。React 不用装。CodeMirror 例外:它的包都依赖同一份 @codemirror/state,
   要加 CodeMirror 的 API,在 ui/vendor-src/codemirror-all.ts 加一行 export,再 `npm run vendor:codemirror`(需要 node_modules)。
 - 加工具:tools.ts 加定义 + functions/ 加实现,然后 `iimos restart`。
+- **出厂应用(resources/apps/)的编译产物要进 git**:笔记的 ui/dist、创意的 app/dist、导图的 assets/client/apps/mindmap/dist。
+  用户机器上没有 npm,只有源码的应用起不来。改了这些应用的源码,在开发机上重新编译再提交。
+  出厂应用只在数据目录里还没有时才落地,老用户的副本不会自动更新。
 - 数据格式要向前兼容:回滚只回代码,不动 $IIMOS_DATA。
 - 端口跨启动稳定(记在 $IIMOS_DATA/worktop/port.json):界面偏好存 localStorage,按 origin 隔离,换端口就全没了。
 
