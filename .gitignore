@@ -59,9 +59,3 @@ coverage/
 .dev/
 CLAUDE.md
 
-# ─── Cloudflare 部署配置(只提交 example) ───
-site/wrangler.jsonc
-.wrangler/
-
-# 官网(site/)自己的构建产物
-site/ui/dist/

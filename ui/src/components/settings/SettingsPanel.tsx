@@ -9,7 +9,7 @@ import { SkillsSettings } from "./SkillsSettings";
 
 const emptySettings: Settings = {
   apiUrl: "", apiKey: "", model: "", system: "", compressThreshold: "64000",
-  compactPrompt: "", toolResultMaxChars: "30000", toolRoundsLimit: "on", maxToolRounds: "64", telemetry: "on",
+  compactPrompt: "", toolResultMaxChars: "30000", toolRoundsLimit: "on", maxToolRounds: "64",
 };
 const categories = [
   { id: "model", label: "模型", icon: Bot, description: "连接模型，设置助手的回应方式。" },
@@ -20,7 +20,7 @@ const categories = [
   { id: "about", label: "关于", icon: Info, description: "worktop · iimos 的工作台形态" },
 ] as const;
 type Category = typeof categories[number]["id"];
-type SaveGroup = "connection" | "system" | "advanced" | "telemetry";
+type SaveGroup = "connection" | "system" | "advanced";
 type SaveState = { busy?: boolean; error?: string; saved?: boolean };
 const secondaryButton = "shrink-0 border border-border px-3 py-1.5 text-[12px] font-medium text-text transition-colors hover:bg-bg-hover disabled:opacity-40";
 
@@ -130,12 +130,6 @@ export function SettingsPanel({ onSaved, onOpenSkill }: { onSaved?: (settings: S
                   <option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option>
                 </select>
               </Field>{localNote === "theme" && <SavedNote />}</Section>
-              <Section title="使用统计"><Field label="匿名使用统计" description="仅上报事件名、版本、平台与匿名安装 ID，用于了解使用情况。不包含对话、文件或网址内容。">
-                <select className={inputClass} value={form.telemetry} disabled={states.telemetry?.busy}
-                  onChange={(e) => { void save("telemetry", { telemetry: e.target.value }); }}>
-                  <option value="on">开启</option><option value="off">关闭</option>
-                </select>
-              </Field><SaveFeedback state={states.telemetry} /></Section>
             </div>
             <div hidden={category !== "advanced"}>
               <Section title="上下文管理" description="通常保持默认值即可。">

@@ -181,8 +181,6 @@ server/
 ├── iimos.ts               launcher 能力入口（终端、文件框、通知、浏览器）
 └── shared/                前后端共用事件契约
 resources/                 内置应用、技能等资源
-site/                      worktop.iimos.ai 官网(Cloudflare Worker),不属于形态
-gateway/                   给试用用户发 key 的 Responses API 中转(未上线)
 ```
 
 Agent 循环接收组装好的模型输入和工具，不依赖对话存储。对话层负责持久化消息、恢复上下文和向界面广播事件；HTTP 层按业务调用对应模块。

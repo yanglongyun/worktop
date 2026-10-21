@@ -43,7 +43,6 @@ ui/                 界面:React + TypeScript(+ Tailwind 类名)
 resources/          出厂的技能、应用、小组件
 scripts/            build-server.mjs(服务端打包,main.js 也 import 它)、build-ui.mjs(开发时编界面)、vendor-codemirror.mjs
 tests/              node --test;host-routes.test.ts 用 tsx 跑(开发用,需要 node_modules)
-site/ gateway/      worktop.iimos.ai 官网和它的 Worker,不属于形态(发布形态时排除)
 package.json        version 是形态版本号;iimos.contract 是需要的 launcher 契约版本(2:要终端能力)
 ```
 
